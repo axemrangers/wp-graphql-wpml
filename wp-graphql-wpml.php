@@ -29,6 +29,23 @@ function wpgraphqlwpml_is_graphql_request()
     }
     // Check if WooGraphQL is wanted
     if (!class_exists('WP_GraphQL_WooCommerce')) {
+        add_action(
+          'admin_notices',
+          function() use ( $dep ) {
+            ?>
+            <div class="error notice">
+              <p>
+                <?php
+                  printf(
+                    /* translators: dependency not ready error message */
+                    esc_html__( 'WP GraphQL Woocommerce is not actived. Products will not be filtered by language.', 'wp-graphql-wpml' ),
+                  );
+                ?>
+              </p>
+            </div>
+            <?php
+          }
+        );
         return false;
     }
 
@@ -855,6 +872,5 @@ function wpgraphqlwpml_action_init()
         2
     );
 }
-
-
-add_action('woographql_init', 'wpgraphqlwpml_action_init');
+add_action('plugins_loaded', 'wpgraphqlwpml_action_init')
+//add_action('woographql_init', 'wpgraphqlwpml_action_init');
