@@ -27,13 +27,6 @@ function wpgraphqlwpml_is_graphql_request()
     if (!class_exists('WPGraphQL')) {
         return false;
     }
-    if (!class_exists('WP_GraphQL_WooCommerce')) {
-      error_log(print_r( 'WARN: WP_GraphQL_WooCommerce class not found.' , true ) );
-    } elseif (!class_exists('WPGraphQL\WooCommerce')) {
-      error_log(print_r( 'WARN: WPGraphQL WooCommerce class not found.' , true ) );
-    } elseif ( ! defined( 'WPGRAPHQL_WOOCOMMERCE_VERSION' ) ) {
-      error_log(print_r( 'WARN: Cant find WpGraphQL Woocommerce.' , true ) );
-    }
     return is_graphql_http_request();
 }
 
@@ -65,6 +58,169 @@ function wpgraphqlwpml_handle_language_filter_request($query_args, $source, $arg
 add_filter('graphql_post_object_connection_query_args', 'wpgraphqlwpml_handle_language_filter_request', 110, 5);
 add_filter('graphql_term_object_connection_query_args', 'wpgraphqlwpml_handle_language_filter_request', 110, 5);
 add_filter('graphql_comment_object_connection_query_args', 'wpgraphqlwpml_handle_language_filter_request', 110, 5);
+
+function wpgraphqlwpml_add_post_type_name_fields($post_type_name)
+{
+  error_log(print_r( 'Adding WPML for post_types '.$post_type_name , true ) );
+  register_graphql_field(
+      $post_type_name,
+      'locale',
+      [
+          'type' => 'Locale',
+          'description' => __('WPML translation link', 'wp-graphql-wpml'),
+          'resolve' => function (
+              \WPGraphQL\Model\Post $post,
+              $args,
+              $context,
+              $info
+          ) {
+              $fields = $info->getFieldSelection();
+              $language = [
+                  'id' => null,
+                  'locale' => null,
+              ];
+
+              $langInfo = apply_filters('wpml_post_language_details', NULL, $post->ID);
+              $locale = $langInfo['locale'];
+
+              if (!$locale) {
+                  return null;
+              }
+
+              $language['id'] = $locale;
+
+              if (isset($fields['locale'])) {
+                  $language['locale'] = $locale;
+              }
+
+              return $language;
+          },
+      ]
+  );
+  register_graphql_field(
+      $post_type_name,
+      'localizedWpmlUrl',
+      [
+          'type' => 'String',
+          'description' => __('WPML localized url of the page/post', 'wp-graphql-wpml'),
+          'resolve' => function (
+              \WPGraphQL\Model\Post $post,
+              $args,
+              $context,
+              $info
+          ) {
+              global $sitepress;
+
+              $post_id = $post->ID;
+              $langInfo = apply_filters('wpml_post_language_details', NULL, $post_id);
+              $languages = $sitepress->get_active_languages();
+              $post_language = [];
+              foreach ($languages as $language) {
+                  if ($language['code'] === $langInfo['language_code']) {
+                      $post_language = $language;
+                      break;
+                  }
+              }
+
+              list($thisPost, $translationUrl) = graphql_wpml_get_translation_url($post_id, $post_language);
+
+              return $translationUrl;
+          },
+      ]
+  );
+  register_graphql_field(
+      $post_type_name,
+      'translations',
+      [
+          'type' => ['list_of' => 'Translation'],
+          'description' => __('WPML translations', 'wpnext'),
+          'resolve' => function (
+              \WPGraphQL\Model\Post $post,
+              $args,
+              $context,
+              $info
+          ) {
+              global $sitepress;
+              $translations = [];
+
+              $languages = $sitepress->get_active_languages();
+              $orig_post_id = $post->ID;
+
+              foreach ($languages as $language) {
+                  $lang_code = array_key_exists('language_code', $languages) ? $language['language_code'] : $language['code'];
+                  $post_id = wpml_object_id_filter($orig_post_id, 'post', false, $lang_code);
+                  if ($post_id === null || $post_id == $orig_post_id) continue;
+
+                  list($thisPost, $translationUrl) = graphql_wpml_get_translation_url($post_id, $language);
+
+                  $translations[] = array('locale' => $language['default_locale'], 'id' => $post_id, 'post_title' => $thisPost->post_title, 'href' => $translationUrl);
+              }
+
+              return $translations;
+          },
+      ]
+  );
+  register_graphql_field(
+      $post_type_name,
+      'translated',
+      [
+          'type' => ['list_of' => $type],
+          'description' => __('WPML translated versions of the same post', 'wpnext'),
+          'resolve' => function (
+              \WPGraphQL\Model\Post $post,
+              $args,
+              $context,
+              $info
+          ) {
+              global $sitepress;
+              global $wpdb;
+
+              $fields = $info->getFieldSelection();
+              $translations = [];
+
+              $languages = $sitepress->get_active_languages();
+              $settings = $wpdb->get_row(
+                  "SELECT option_value from {$wpdb->prefix}options where option_name = 'page_on_front'",
+                  ARRAY_A
+              );
+
+              // Get the default language code
+              $default_lang = apply_filters('wpml_default_language', NULL);
+
+              // Front page ID of the default language
+              $default_front_page_ID = $settings['option_value'];
+
+              foreach ($languages as $language) {
+                  $orig_post_id = $post->ID;
+                  $lang_code = array_key_exists('language_code', $languages) ? $language['language_code'] : $language['code'];
+                  $post_id = wpml_object_id_filter($orig_post_id, 'post', false, $lang_code);
+
+                  if ($post_id === null || $post_id == $orig_post_id) continue;
+
+                  $translation = new \WPGraphQL\Model\Post(
+                      \WP_Post::get_instance($post_id)
+                  );
+
+                  // Check if the homepage option is configured
+                  if ($default_front_page_ID) {
+
+                      // Get the ID of the translated home page
+                      $translated_front_pageID = apply_filters('wpml_object_id', $default_front_page_ID, 'page', FALSE, $lang_code);
+
+                      if ($post_id == $translated_front_pageID) {
+                          $new_uri = $lang_code == $default_lang ? '/' : '/' . $lang_code;
+                          $translation->uri = $new_uri;
+                      }
+                  }
+
+                  array_push($translations, $translation);
+              }
+
+              return $translations;
+          },
+      ]
+  );
+}
 
 function wpgraphqlwpml_add_post_type_fields(\WP_Post_Type $post_type_object)
 {
@@ -450,6 +606,21 @@ function wpgraphqlwpml_action_graphql_register_types()
     ]);
     foreach (\WPGraphQL::get_allowed_post_types() as $post_type) {
         wpgraphqlwpml_add_post_type_fields(get_post_type_object($post_type));
+    }
+
+    // go through woocommerce post types if woographql is activated
+    include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+    if ( is_plugin_active( 'wp-graphql-woocommerce/wp-graphql-woocommerce.php') ) {
+      $wc_post_types = array(
+        'product',
+        'product_variation',
+        'shop_coupon',
+        'shop_order',
+        'shop_order_refund',
+      );
+      foreach ($wc_post_types as $wc_post_type) {
+        wpgraphqlwpml_add_post_type_name_fields($wc_post_type);
+      }
     }
 }
 
