@@ -27,6 +27,10 @@ function wpgraphqlwpml_is_graphql_request()
     if (!class_exists('WPGraphQL')) {
         return false;
     }
+    // Check if WooGraphQL is wanted
+    if (!class_exists('WP_GraphQL_WooCommerce')) {
+        return false;
+    }
 
     return is_graphql_http_request();
 }
@@ -853,4 +857,4 @@ function wpgraphqlwpml_action_init()
 }
 
 
-add_action('graphql_init', 'wpgraphqlwpml_action_init');
+add_action('woographql_init', 'wpgraphqlwpml_action_init');
