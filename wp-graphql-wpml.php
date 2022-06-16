@@ -29,23 +29,7 @@ function wpgraphqlwpml_is_graphql_request()
     }
     // Check if WooGraphQL is wanted
     if (!class_exists('WP_GraphQL_WooCommerce')) {
-        add_action(
-          'admin_notices',
-          function() use ( $dep ) {
-            ?>
-            <div class="error notice">
-              <p>
-                <?php
-                  printf(
-                    /* translators: dependency not ready error message */
-                    esc_html__( 'WP GraphQL Woocommerce is not actived. Products will not be filtered by language.', 'wp-graphql-wpml' ),
-                  );
-                ?>
-              </p>
-            </div>
-            <?php
-          }
-        );
+        error_log( print_r( 'WP GraphQL Woocommerce is not actived. Products will not be filtered by language.', true ) );
         return false;
     }
 
