@@ -164,7 +164,7 @@ function wpgraphqlwpml_add_post_type_name_fields($post_type_name)
       $post_type_name,
       'translated',
       [
-          'type' => ['list_of' => $type],
+          'type' => ['list_of' => $post_type_name],
           'description' => __('WPML translated versions of the same post', 'wpnext'),
           'resolve' => function (
               \WPGraphQL\Model\Post $post,
