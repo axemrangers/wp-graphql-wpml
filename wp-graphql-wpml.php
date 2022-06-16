@@ -852,4 +852,4 @@ function wpgraphqlwpml_action_init()
     );
 }
 //add_action('woographql_init', 'wpgraphqlwpml_action_init');
-add_action('plugins_loaded', 'wpgraphqlwpml_action_init')
+add_action('plugins_loaded', 'wpgraphqlwpml_action_init');
