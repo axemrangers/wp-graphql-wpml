@@ -29,11 +29,9 @@ function wpgraphqlwpml_is_graphql_request()
     }
     if (!class_exists('WP_GraphQL_WooCommerce')) {
       error_log(print_r( 'WARN: WP_GraphQL_WooCommerce class not found.' , true ) );
-    }
-    if (!class_exists('WPGraphQL\WooCommerce')) {
+    } elseif (!class_exists('WPGraphQL\WooCommerce')) {
       error_log(print_r( 'WARN: WPGraphQL WooCommerce class not found.' , true ) );
-    } 
-    if ( ! defined( 'WPGRAPHQL_WOOCOMMERCE_VERSION' ) ) {
+    } elseif ( ! defined( 'WPGRAPHQL_WOOCOMMERCE_VERSION' ) ) {
       error_log(print_r( 'WARN: Cant find WpGraphQL Woocommerce.' , true ) );
     }
     return is_graphql_http_request();
