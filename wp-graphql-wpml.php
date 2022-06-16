@@ -27,7 +27,10 @@ function wpgraphqlwpml_is_graphql_request()
     if (!class_exists('WPGraphQL')) {
         return false;
     }
-
+    if (!class_exists('WPGraphQL\WooCommerce')) {
+      error_log(print_r( 'WARN: WPGraphQL WooCommerce class not found.' , true ) );
+    }
+ 
     return is_graphql_http_request();
 }
 
@@ -63,6 +66,7 @@ add_filter('graphql_comment_object_connection_query_args', 'wpgraphqlwpml_handle
 function wpgraphqlwpml_add_post_type_fields(\WP_Post_Type $post_type_object)
 {
     $type = ucfirst($post_type_object->graphql_single_name);
+    error_log(print_r( 'Adding WPML for post_types '.$type , true ) );
     register_graphql_field(
         $post_type_object->graphql_single_name,
         'locale',
