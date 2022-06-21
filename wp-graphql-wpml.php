@@ -40,9 +40,8 @@ add_filter('graphql_post_object_connection_query_args', 'wpgraphqlwpml_disable_w
 
 function wpgraphqlwpml_handle_language_filter_request($query_args, $source, $args, $context, $info)
 {
-    $lang = $args['where']['wpmlLanguage'];
     //If the wpmlLanguage argument exists in the WHERE parameters
-    if(isset($lang)){
+    if(isset($args['where']['wpmlLanguage'])){
         global $sitepress;
         //If WPML is installed
         if($sitepress){
@@ -61,7 +60,6 @@ add_filter('graphql_comment_object_connection_query_args', 'wpgraphqlwpml_handle
 
 function wpgraphqlwpml_add_post_type_name_fields($post_type_name)
 {
-  error_log(print_r( 'Adding WPML for post_types '.$post_type_name , true ) );
   register_graphql_field(
       $post_type_name,
       'locale',
@@ -225,7 +223,6 @@ function wpgraphqlwpml_add_post_type_name_fields($post_type_name)
 function wpgraphqlwpml_add_post_type_fields(\WP_Post_Type $post_type_object)
 {
     $type = ucfirst($post_type_object->graphql_single_name);
-    error_log(print_r( 'Adding WPML for post_types '.$type , true ) );
     register_graphql_field(
         $post_type_object->graphql_single_name,
         'locale',
